@@ -10,7 +10,7 @@ int main()
     {
         cyw43_arch_poll();
 
-        monitorar();
+        monitorar(); // Verifica constantimente se deve disparar o alarme
         sleep_ms(200);
     }
 
@@ -33,7 +33,7 @@ void inicializar_perifericos()
     // Inicializa os periféricos agora que o Wi-Fi foi estabelecido
     inicializar_display_i2c();        // Inicializa o display I2C
     configurar_matriz_leds();         // Configura a matriz de LEDs
-    inicializar_leds();                // Configura o LED (se necessário)
+    inicializar_leds();               // Configura o LED (se necessário)
     inicializar_pwm_buzzer();         // Inicializa o PWM para o buzzer
     atualizar_display();              // Atualiza o conteúdo do display
     configurar_botao_bootsel();       // Configura o botão BOOTSEL
@@ -83,7 +83,7 @@ void inicializar_display_i2c()
 }
 
 void inicializar_pwm_buzzer()
-{
+{ // Função para inicializar o pwm do Buzzer
     gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
 
@@ -92,13 +92,13 @@ void inicializar_pwm_buzzer()
     pwm_set_enabled(slice_num, false);                                    // Começa desligado
 }
 
-void inicializar_sensor_temperatura()
+void inicializar_sensor_temperatura() // função para inicializar o ADC do sensor de temperatura interno
 {
     adc_init();
     adc_set_temp_sensor_enabled(true);
 }
 
-void conectar_wifi()
+void conectar_wifi() // Função para conectar ao WIFI
 {
     if (cyw43_arch_init())
     {
@@ -124,7 +124,7 @@ void conectar_wifi()
     }
 }
 
-void configurar_servidor_tcp()
+void configurar_servidor_tcp() // Função para configurar servidor TCP
 {
     struct tcp_pcb *server = tcp_new();
     if (!server)
@@ -144,7 +144,7 @@ void configurar_servidor_tcp()
     printf("Servidor ouvindo na porta 80\n");
 }
 
-void configurar_botao_bootsel()
+void configurar_botao_bootsel() // Função para Bootsel no botão B
 {
     gpio_init(botaoB);
     gpio_set_dir(botaoB, GPIO_IN);
@@ -216,40 +216,39 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
 
     // Cria a resposta HTML
     char html[1024];
-snprintf(html, sizeof(html),
-         "HTTP/1.1 200 OK\r\n"
-         "Content-Type: text/html\r\n\r\n"
-         "<html><head>"
-         "<style>"
-         "body{background-color:#333;color:#fff;text-align:center}"
-         "h1{margin:10px}"
-         "button{width:150px;padding:10px;margin:5px;border:none;border-radius:6px;font-size:16px;color:#fff;cursor:pointer}"
-         ".jumbo{padding:15px;background-color:#add8e6;border-radius:10px;margin:0 60%}"
-         "p{background-color:#FF8C00; width: 300px; padding: 10px; border-radius: 10px;}"
-         "</style>"
-         "</head><body>"
-         "<h1>Casa Inteligente</h1><div class='jumbo'>"
+    snprintf(html, sizeof(html),
+             "HTTP/1.1 200 OK\r\n"
+             "Content-Type: text/html\r\n\r\n"
+             "<html><head>"
+             "<style>"
+             "body{background-color:#333;color:#fff;text-align:center}"
+             "h1{margin:10px}"
+             "button{width:150px;padding:10px;margin:5px;border:none;border-radius:6px;font-size:16px;color:#fff;cursor:pointer}"
+             ".jumbo{padding:15px;background-color:#add8e6;border-radius:10px;margin:0 60%}"
+             "p{background-color:#FF8C00; width: 300px; padding: 10px; border-radius: 10px;}"
+             "</style>"
+             "</head><body>"
+             "<h1>Casa Inteligente</h1><div class='jumbo'>"
 
-         // Luzes
-         "<form action='/luz_1'><button style='background:#1E90FF'>&#x23FB; Luz 1</button></form>"
-         "<form action='/luz_2'><button style='background:#FF4500'>&#x23FB; Luz 2</button></form>"
+             // Luzes
+             "<form action='/luz_1'><button style='background:#1E90FF'>&#x23FB; Luz 1</button></form>"
+             "<form action='/luz_2'><button style='background:#FF4500'>&#x23FB; Luz 2</button></form>"
 
-         // Porta
-         "<form action='/porta'><button style='background:#666'>&#x23FB; Porta</button></form>"
+             // Porta
+             "<form action='/porta'><button style='background:#666'>&#x23FB; Porta</button></form>"
 
-         // Alarme
-         "<form action='/alarme'><button style='background:#228B22'>&#x23FB; Alarme</button></form>"
-         "<form action='/silenciar_alarme'><button style='background:#B22222'>Silenciar Alarme</button></form>"
+             // Alarme
+             "<form action='/alarme'><button style='background:#228B22'>&#x23FB; Alarme</button></form>"
+             "<form action='/silenciar_alarme'><button style='background:#B22222'>Silenciar Alarme</button></form>"
 
-         // Modo Viagem
-         "<form action='/modo_viagem'><button style='background:#800080'>&#x23FB; Modo Viagem</button></form>"
+             // Modo Viagem
+             "<form action='/modo_viagem'><button style='background:#800080'>&#x23FB; Modo Viagem</button></form>"
 
-         // Temperatura
-         "<p>%.1f &deg;C</p>"
+             // Temperatura
+             "<p>%.1f &deg;C</p>"
 
-         "</div></body></html>",
-         temperatura);
-
+             "</div></body></html>",
+             temperatura);
 
     // Escreve dados para envio (mas não os envia imediatamente).
     tcp_write(tpcb, html, strlen(html), TCP_WRITE_FLAG_COPY);
@@ -353,7 +352,7 @@ void draw_ssd1306(uint32_t *_matriz)
     }
 }
 
-void tocar_pwm_buzzer(uint duracao_ms)
+void tocar_pwm_buzzer(uint duracao_ms) // Função para Tocar o buzzer
 {
     uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
     pwm_set_enabled(slice_num, true);
@@ -365,7 +364,7 @@ bool cor = true;
 
 // -------------------------------------- FUNÇÕES AUXILIARES DO SISTEMA --------------------------------------
 
-void atualizar_display()
+void atualizar_display() // Atualizar as informações do display
 {
     ssd1306_fill(&ssd, !cor);
     ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
@@ -413,7 +412,7 @@ float verificar_temperatura(void)
 
 // -------------------------------------- FUNÇÕES ACIONADA PELOS BOTÕES --------------------------------------
 
-void alternar_luz_1()
+void alternar_luz_1() // Fução para alternar a luz do Led
 {
     luz_1 = !luz_1;
 
@@ -422,7 +421,7 @@ void alternar_luz_1()
     gpio_put(LED_GREEN_PIN, luz_1);
 }
 
-void alternar_luz_2()
+void alternar_luz_2() // Função para alternar a luz do display
 {
     luz_2 = !luz_2;
 
@@ -436,13 +435,13 @@ void alternar_luz_2()
     }
 }
 
-void alternar_porta()
+void alternar_porta() // Função para abrir e fechar a porta
 {
     porta_open = !porta_open;
     atualizar_display();
 }
 
-void alternar_alarme()
+void alternar_alarme() // função para ativar e desativar o alarme
 {
     if (!modo_viagem)
     {
@@ -452,7 +451,7 @@ void alternar_alarme()
     atualizar_display();
 }
 
-void silenciar_alarme()
+void silenciar_alarme() // função para silenciar o alarme
 {
     alarme_disparado = false;
     modo_viagem = false;
@@ -460,7 +459,7 @@ void silenciar_alarme()
     atualizar_display();
 }
 
-void alternar_modo_viagem()
+void alternar_modo_viagem() // função para ativar e desativar o modo viagem
 {
     modo_viagem = !modo_viagem;
 
@@ -482,7 +481,7 @@ void alternar_modo_viagem()
     }
 }
 
-void monitorar()
+void monitorar() // função que monitora constantimente se deve tocar o buzzer/alarme
 {
     // Verifica se deve disparar o alarme
     if ((alarme && porta_open) ||
