@@ -33,7 +33,7 @@ void inicializar_perifericos()
     // Inicializa os periféricos agora que o Wi-Fi foi estabelecido
     inicializar_display_i2c();        // Inicializa o display I2C
     configurar_matriz_leds();         // Configura a matriz de LEDs
-    gpio_led_bitdog();                // Configura o LED (se necessário)
+    inicializar_leds();                // Configura o LED (se necessário)
     inicializar_pwm_buzzer();         // Inicializa o PWM para o buzzer
     atualizar_display();              // Atualiza o conteúdo do display
     configurar_botao_bootsel();       // Configura o botão BOOTSEL
@@ -42,7 +42,7 @@ void inicializar_perifericos()
 }
 
 // Inicializar os Pinos GPIO para acionamento dos LEDs da BitDogLab
-void gpio_led_bitdog(void)
+void inicializar_leds(void)
 {
     // Configuração dos LEDs como saída
     gpio_init(LED_BLUE_PIN);
@@ -212,30 +212,44 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
     user_request(&request);
 
     // Leitura da temperatura interna
-    float temperature = temp_read();
+    float temperatura = verificar_temperatura();
 
     // Cria a resposta HTML
     char html[1024];
-    snprintf(html, sizeof(html),
-             "HTTP/1.1 200 OK\r\n"
-             "Content-Type: text/html\r\n\r\n"
-             "<html><head>"
-             "<style>body{background-color:#333;color:#fff;text-align:center}h1{margin:10px}button{width:150px;padding:10px;margin:5px;border:none;border-radius:6px;font-size:16px;color:#fff;cursor:pointer}.jumbo{padding:15px;background-color:#add8e6;border-radius:10px;margin:0 60%}</style>" // Azul claro para o jumbo
-             "</head><body>"
-             "<h1>Casa Inteligente</h1><div class='jumbo'>"
+snprintf(html, sizeof(html),
+         "HTTP/1.1 200 OK\r\n"
+         "Content-Type: text/html\r\n\r\n"
+         "<html><head>"
+         "<style>"
+         "body{background-color:#333;color:#fff;text-align:center}"
+         "h1{margin:10px}"
+         "button{width:150px;padding:10px;margin:5px;border:none;border-radius:6px;font-size:16px;color:#fff;cursor:pointer}"
+         ".jumbo{padding:15px;background-color:#add8e6;border-radius:10px;margin:0 60%}"
+         "p{background-color:#FF8C00; width: 300px; padding: 10px; border-radius: 10px;}"
+         "</style>"
+         "</head><body>"
+         "<h1>Casa Inteligente</h1><div class='jumbo'>"
 
-             "<form action='/luz_1'><button style='background:blue'>&#x23FB;Luz</button></form>"
-             "<form action='/porta'><button style='background:#444'>&#x23FB;Porta</button></form>"
+         // Luzes
+         "<form action='/luz_1'><button style='background:#1E90FF'>&#x23FB; Luz 1</button></form>"
+         "<form action='/luz_2'><button style='background:#FF4500'>&#x23FB; Luz 2</button></form>"
 
-             "<form action='/alarme'><button style='background:green'>&#x23FB;Alarme</button></form>"
-             "<form action='/modo_viagem'><button style='background:#444'>&#x23FB; Modo Viagem</button></form>"
+         // Porta
+         "<form action='/porta'><button style='background:#666'>&#x23FB; Porta</button></form>"
 
-             "<form action='/luz_2'><button style='background:red'>&#x23FB; Luz 2</button></form>"
-             "<form action='/silenciar_alarme'><button style='background:#444'> Silenciar alarme </button></form>"
+         // Alarme
+         "<form action='/alarme'><button style='background:#228B22'>&#x23FB; Alarme</button></form>"
+         "<form action='/silenciar_alarme'><button style='background:#B22222'>Silenciar Alarme</button></form>"
 
-             "<p>%.1f &deg;C</p>" // Temperatura dentro do "jumbo"
-             "</div></body></html>",
-             temperature);
+         // Modo Viagem
+         "<form action='/modo_viagem'><button style='background:#800080'>&#x23FB; Modo Viagem</button></form>"
+
+         // Temperatura
+         "<p>%.1f &deg;C</p>"
+
+         "</div></body></html>",
+         temperatura);
+
 
     // Escreve dados para envio (mas não os envia imediatamente).
     tcp_write(tpcb, html, strlen(html), TCP_WRITE_FLAG_COPY);
@@ -388,13 +402,13 @@ void atualizar_display()
 }
 
 // Leitura da temperatura interna
-float temp_read(void)
+float verificar_temperatura(void)
 {
     adc_select_input(4);
-    uint16_t raw_value = adc_read();
-    const float conversion_factor = 3.3f / (1 << 12);
-    float temperature = 27.0f - ((raw_value * conversion_factor) - 0.706f) / 0.001721f;
-    return temperature;
+    uint16_t valor_adc = adc_read();
+    const float fator_convercao = 3.3f / (1 << 12);
+    float temperatura = 27.0f - ((valor_adc * fator_convercao) - 0.706f) / 0.001721f;
+    return temperatura;
 }
 
 // -------------------------------------- FUNÇÕES ACIONADA PELOS BOTÕES --------------------------------------
@@ -458,6 +472,7 @@ void alternar_modo_viagem()
         alarme = true;
         alternar_luz_1();
         alternar_luz_2();
+        sleep_ms(100);
         alternar_porta();
     }
     else

@@ -66,7 +66,7 @@
 // Matriz de LEDs
 #define MATRIZ_PIN      7
 #define NUM_PIXELS      25
-#define BRILHO_PADRAO   100
+#define BRILHO_PADRAO   50
 
 // ------------------------------
 // Variáveis globais
@@ -87,7 +87,7 @@ bool alarme_disparado = false;
 // ------------------------------
 
 // LEDs
-void gpio_led_bitdog(void);
+void inicializar_leds(void);
 
 // PWM - Buzzer
 void inicializar_pwm_buzzer(void);
@@ -98,7 +98,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *newpcb, err_t err);
 static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 
 // Sensor interno
-float temp_read(void);
+float verificar_temperatura(void);
 
 // Interface do usuário
 void user_request(char **request);
@@ -111,6 +111,10 @@ void draw_ssd1306(uint32_t *_matriz);
 // Matriz de LEDs
 void configurar_matriz_leds(void);
 void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm);
+
+
+// funções do sistema 
+
 void alternar_luz_1();
 void alternar_luz_2();
 void alternar_porta();
@@ -118,6 +122,8 @@ void alternar_alarme();
 void monitorar();
 void silenciar_alarme();
 void alternar_modo_viagem();
+
+
 // GPIO / Interrupções
 void gpio_irq_handler(uint gpio, uint32_t events);
 void conectar_wifi();
