@@ -10,7 +10,11 @@ O projeto visa desenvolver um sistema de automação residencial com controle re
 3. **Buzzer**
 4. **Matriz de LED 5x5 WS2812** 
 5. **Led RGB**
-6. Modulo WIFI (CYW4)
+6. **Modulo WIFI (CYW4)**
+7. **Jumpers**
+8. **Servo Motor**
+9. **Protoboard**
+10. **Fonte de alimentação externa 5v**
 
 ## Funcionalidade
 
@@ -42,4 +46,4 @@ Ao iniciar o sistema pela primeira vez, é necessário configurar a rede Wi-Fi (
 
 ## Demonstração
 <!-- TODO: adicionar link do vídeo -->
-Vídeo demonstrando as funcionalidades da solução implementada: [Demonstração](https://youtu.be/ZQJ13r0Qnfk)
+Vídeo demonstrando as funcionalidades da solução implementada: [Demonstração]()

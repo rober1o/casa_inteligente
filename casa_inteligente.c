@@ -2,15 +2,14 @@
 #include "casa_inteligente.h"
 
 int main()
-{
+{   // inicializa os perifericos, iniciando primeiro o wifi e posteriormente o restante
     inicializar_perifericos();
     desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
-
     while (true)
     {
         cyw43_arch_poll();
 
-        monitorar(); // Verifica constantimente se deve disparar o alarme
+        monitorar(); // Verifica constantimente se deve ou não disparar o alarme
         sleep_ms(200);
     }
 
@@ -39,10 +38,11 @@ void inicializar_perifericos()
     configurar_botao_bootsel();       // Configura o botão BOOTSEL
     configurar_servidor_tcp();        // Configura o servidor TCP
     inicializar_sensor_temperatura(); // Inicializa o sensor de temperatura
+    incializar_servo_motor();
 }
 
 // Inicializar os Pinos GPIO para acionamento dos LEDs da BitDogLab
-void inicializar_leds(void)
+void inicializar_leds()
 {
     // Configuração dos LEDs como saída
     gpio_init(LED_BLUE_PIN);
@@ -56,6 +56,17 @@ void inicializar_leds(void)
     gpio_init(LED_RED_PIN);
     gpio_set_dir(LED_RED_PIN, GPIO_OUT);
     gpio_put(LED_RED_PIN, false);
+}
+
+void incializar_servo_motor()
+{
+    gpio_set_function(SERVO_MOTOR_PIN, GPIO_FUNC_PWM);
+
+    uint slice_num = pwm_gpio_to_slice_num(SERVO_MOTOR_PIN); // Agora está correto!
+
+    pwm_set_wrap(slice_num, 20000);    // 20 ms período (50Hz)
+    pwm_set_clkdiv(slice_num, 125.0f); // Clock de 1MHz
+    pwm_set_enabled(slice_num, true);
 }
 
 void configurar_matriz_leds() // FUNÇÃO PARA CONFIGURAR O PIO PARA USAR NA MATRIZ DE LEDS
@@ -83,13 +94,14 @@ void inicializar_display_i2c()
 }
 
 void inicializar_pwm_buzzer()
-{ // Função para inicializar o pwm do Buzzer
+{
     gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
 
-    pwm_set_wrap(slice_num, 25000);                                       // Frequência: 500 Hz (125 MHz / 25000 = 500 Hz)
-    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(BUZZER_PIN), 6250); // 50% duty cycle
-    pwm_set_enabled(slice_num, false);                                    // Começa desligado
+    pwm_set_clkdiv(slice_num, 10.0f);                                      // Reduz clock base para 12.5 MHz
+    pwm_set_wrap(slice_num, 31250);                                        // 12.5 MHz / 31250 = 400 Hz
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(BUZZER_PIN), 15625); // 50% duty cycle
+    pwm_set_enabled(slice_num, false);                                     // Começa desligado
 }
 
 void inicializar_sensor_temperatura() // função para inicializar o ADC do sensor de temperatura interno
@@ -161,31 +173,31 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *newpcb, err_t err)
     return ERR_OK;
 }
 
-// Tratamento do request do usuário - digite aqui
+// Tratamento do request do usuário
 void user_request(char **request)
 {
 
-    if (strstr(*request, "GET /luz_1") != NULL)
+    if (strstr(*request, "GET /l1") != NULL)
     {
         alternar_luz_1();
     }
-    else if (strstr(*request, "GET /luz_2") != NULL)
+    else if (strstr(*request, "GET /l2") != NULL)
     {
         alternar_luz_2();
     }
-    else if (strstr(*request, "GET /porta") != NULL)
+    else if (strstr(*request, "GET /pt") != NULL)
     {
         alternar_porta();
     }
-    else if (strstr(*request, "GET /alarme") != NULL)
+    else if (strstr(*request, "GET /al") != NULL)
     {
         alternar_alarme();
     }
-    else if (strstr(*request, "GET /modo_viagem") != NULL)
+    else if (strstr(*request, "GET /mv") != NULL)
     {
         alternar_modo_viagem();
     }
-    else if (strstr(*request, "GET /silenciar_alarme") != NULL)
+    else if (strstr(*request, "GET /si") != NULL)
     {
         silenciar_alarme();
     }
@@ -219,35 +231,25 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
     snprintf(html, sizeof(html),
              "HTTP/1.1 200 OK\r\n"
              "Content-Type: text/html\r\n\r\n"
-             "<html><head>"
-             "<style>"
-             "body{background-color:#333;color:#fff;text-align:center}"
-             "h1{margin:10px}"
-             "button{width:150px;padding:10px;margin:5px;border:none;border-radius:6px;font-size:16px;color:#fff;cursor:pointer}"
-             ".jumbo{padding:15px;background-color:#add8e6;border-radius:10px;margin:0 60%}"
-             "p{background-color:#FF8C00; width: 300px; padding: 10px; border-radius: 10px;}"
-             "</style>"
-             "</head><body>"
-             "<h1>Casa Inteligente</h1><div class='jumbo'>"
-
-             // Luzes
-             "<form action='/luz_1'><button style='background:#1E90FF'>&#x23FB; Luz 1</button></form>"
-             "<form action='/luz_2'><button style='background:#FF4500'>&#x23FB; Luz 2</button></form>"
-
-             // Porta
-             "<form action='/porta'><button style='background:#666'>&#x23FB; Porta</button></form>"
-
-             // Alarme
-             "<form action='/alarme'><button style='background:#228B22'>&#x23FB; Alarme</button></form>"
-             "<form action='/silenciar_alarme'><button style='background:#B22222'>Silenciar Alarme</button></form>"
-
-             // Modo Viagem
-             "<form action='/modo_viagem'><button style='background:#800080'>&#x23FB; Modo Viagem</button></form>"
-
-             // Temperatura
-             "<p>%.1f &deg;C</p>"
-
-             "</div></body></html>",
+             "<html><head><style>"
+             "body{background:#333;color:#f0f0f0;text-align:center;font-family:sans-serif}"
+             "a{display:block;width:200px;padding:10px;margin:10px auto;border-radius:8px;text-decoration:none;color:#fff;font-size:16px}"
+             ".b{background:#9ac7e0;padding:15px;border-radius:12px;margin:20px auto;width:40vw}"
+             ".l1{background:#3a78d0}.l2{background:#d23c1f}.pt{background:#555}"
+             ".al{background:#1e6e1e}.si{background:#992222}.mv{background:#663399}"
+             ".t{background:#1a1a1a;padding:12px;border-radius:12px;width:180px;margin:20px auto;border:1px solid #e88c00}"
+             ".tv{color:#e88c00;font-size:18px;margin-top: 10px;}"
+             "</style></head><body>"
+             "<h3>Casa Inteligente</h3><div class='b'>"
+             "<a href='/l1' class='l1'>Luz 1</a>"
+             "<a href='/l2' class='l2'>Luz 2</a>"
+             "<a href='/pt' class='pt'>Porta</a>"
+             "<a href='/al' class='al'>Alarme</a>"
+             "<a href='/si' class='si'>Silenciar</a>"
+             "<a href='/mv' class='mv'>Modo viagem</a>"
+             "</div>"
+             "<div class='t'>Temperatura:<div class='tv'>%.1f&deg;C</div></div>"
+             "</body></html>",
              temperatura);
 
     // Escreve dados para envio (mas não os envia imediatamente).
@@ -338,20 +340,6 @@ void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm) // F
     }
 }
 
-void draw_ssd1306(uint32_t *_matriz)
-{ // FUNÇÃO PARA DESENHAR NO DISPLAY COM O CÓDIGO EXPORTADO DO PISKEL
-    for (int i = 0; i < 8192; i++)
-    {
-        int x = i % 128; // coluna
-        int y = i / 128; // linha
-
-        if (_matriz[i] > 0x00000000)
-        {
-            ssd1306_pixel(&ssd, x, y, true);
-        }
-    }
-}
-
 void tocar_pwm_buzzer(uint duracao_ms) // Função para Tocar o buzzer
 {
     uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
@@ -366,42 +354,42 @@ bool cor = true;
 
 void atualizar_display() // Atualizar as informações do display
 {
-    ssd1306_fill(&ssd, !cor);
-    ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
-
-    // Desenhar imagem de porta conforme o estado
-    if (porta_open)
-    {
-        draw_ssd1306(porta_aberta);
-    }
-    else
-    {
-        draw_ssd1306(porta_fechada);
-    }
-
     // PRIORIDADE 1: Alarme disparado (sobrepõe tudo, inclusive modo viagem)
     if (alarme_disparado)
     {
-        ssd1306_draw_string(&ssd, "ALERTA!", 56, 30);
+        ssd1306_draw_string(&ssd, "ALERTA!!", 40, 30);
     }
     // PRIORIDADE 2: Modo viagem (somente aparece se o alarme NÃO estiver disparado)
     else if (modo_viagem)
     {
-        ssd1306_draw_string(&ssd, "MODO", 65, 25);
-        ssd1306_draw_string(&ssd, "VIAGEM", 60, 35);
+        ssd1306_fill(&ssd, !cor);                     // limpa o display
+        ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Moldura
+        ssd1306_draw_string(&ssd, "MODO VIAGEM", 20, 30);
+        ssd1306_send_data(&ssd); // Envia os dados para o display
     }
     // PRIORIDADE 3: Estado normal do alarme ON/OFF
     else
     {
-        ssd1306_draw_string(&ssd, "ALARME", 65, 30);
-        ssd1306_draw_string(&ssd, alarme ? "ON" : "OFF", 75, 40);
-    }
 
-    ssd1306_send_data(&ssd);
+        if (alarme)
+        {
+            ssd1306_fill(&ssd, !cor);                     // limpa o display
+            ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Moldura
+            ssd1306_draw_string(&ssd, "ALARME: ON", 20, 30);
+            ssd1306_send_data(&ssd); // Envia os dados para o display
+        }
+        else
+        {
+            ssd1306_fill(&ssd, !cor);                     // limpa o display
+            ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Moldura
+            ssd1306_draw_string(&ssd, "ALARME: OFF", 20, 30);
+            ssd1306_send_data(&ssd); // Envia os dados para o display
+        }
+    }
 }
 
 // Leitura da temperatura interna
-float verificar_temperatura(void)
+float verificar_temperatura()
 {
     adc_select_input(4);
     uint16_t valor_adc = adc_read();
@@ -435,10 +423,23 @@ void alternar_luz_2() // Função para alternar a luz do display
     }
 }
 
-void alternar_porta() // Função para abrir e fechar a porta
+void alternar_porta()
 {
-    porta_open = !porta_open;
-    atualizar_display();
+    porta_open = !porta_open; // alterna estado
+
+    uint slice_num = pwm_gpio_to_slice_num(SERVO_MOTOR_PIN);
+    uint channel = pwm_gpio_to_channel(SERVO_MOTOR_PIN);
+
+    if (porta_open)
+    {
+        // 90 graus (posição aberta)
+        pwm_set_chan_level(slice_num, channel, SERVO_90_DEGREES);
+    }
+    else
+    {
+        // 0 graus (posição fechada)
+        pwm_set_chan_level(slice_num, channel, SERVO_MIN);
+    }
 }
 
 void alternar_alarme() // função para ativar e desativar o alarme
