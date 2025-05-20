@@ -46,4 +46,4 @@ Ao iniciar o sistema pela primeira vez, é necessário configurar a rede Wi-Fi (
 
 ## Demonstração
 <!-- TODO: adicionar link do vídeo -->
-Vídeo demonstrando as funcionalidades da solução implementada: [Demonstração]()
+Vídeo demonstrando as funcionalidades da solução implementada: [Demonstração](https://youtu.be/YUwvcUJCEeQ)
